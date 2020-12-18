@@ -11,7 +11,7 @@ let app = http.createServer(function (request, response) {
     if (queryData.id === undefined) {
       fs.readdir("./data", (err, filelists) => {
         let title = "welcome";
-        let description = "Hello, Node.js";
+        let description = "SOM Accessory is...";
         let list = "<ul>";
         var i = 0;
         while (i < filelists.length) {
