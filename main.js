@@ -1,20 +1,22 @@
 let http = require("http");
 let fs = require("fs");
 let url = require("url");
+let qs = require("querystring");
 
-function templateHTML(title, list, body) {
+function templateHTML(product, list, body) {
   return `
   <!DOCTYPE html>
   <html>
     <head>
       <meta charset="utf-8">
-      <title>SOM Accessories ${title}</title>
+      <title>SOM Accessories ${product}</title>
       <link rel="stylesheet" type="text/css" href="main.css">
     </head>
     <body>
       <h1><a href="/">SOM Accessories</a></h1>
       <div id="grid">
         ${list}
+        <a href='/add'>Add</a>
         ${body}
       </div>
     </body>
@@ -39,14 +41,14 @@ let app = http.createServer(function (request, response) {
   if (pathname === "/") {
     if (queryData.id === undefined) {
       fs.readdir("./data", (err, filelists) => {
-        let title = "welcome";
+        let product = "welcome";
         let description = "SOM Accessory is...";
         let list = templateList(filelists);
         let template = templateHTML(
-          title,
+          product,
           list,
           `<div id="article">
-        <h2>${title}</h2>
+        <h2>${product}</h2>
         <p>${description}</p>
       </div>`
         );
@@ -59,13 +61,13 @@ let app = http.createServer(function (request, response) {
           err,
           description
         ) {
-          let title = queryData.id;
+          let product = queryData.id;
           let list = templateList(filelists);
           let template = templateHTML(
-            title,
+            product,
             list,
             `<div id="article">
-          <h2>${title}</h2>
+          <h2>${product}</h2>
           <p>${description}</p>
         </div>`
           );
@@ -74,6 +76,41 @@ let app = http.createServer(function (request, response) {
         });
       });
     }
+  } else if (pathname === "/add") {
+    fs.readdir("./data", (err, filelists) => {
+      let product = "Product-add";
+      let list = templateList(filelists);
+      let template = templateHTML(
+        product,
+        list,
+        `<form action="http://localhost:3000/add_process" method="post">
+        <p><input type="text" name="product" placeholder='product' /></p>
+        <p>
+          <textarea name="description" placeholder='description'></textarea>
+        </p>
+        <p>
+          <input type="submit" />
+        </p>
+      </form>
+      `
+      );
+      response.writeHead(200);
+      response.end(template);
+    });
+  } else if (pathname === "/add_process") {
+    let body = "";
+    request.on("data", (data) => {
+      body = body + data;
+    });
+    request.on("end", () => {
+      let post = qs.parse(body);
+      let product = post.product;
+      let description = post.description;
+      fs.writeFile(`data/${product}`, description, "utf8", (err) => {
+        response.writeHead(302, { Location: `/?id=${product}` });
+        response.end();
+      });
+    });
   } else {
     response.writeHead(404);
     response.end("Not found");
