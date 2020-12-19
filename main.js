@@ -3,7 +3,7 @@ let fs = require("fs");
 let url = require("url");
 let qs = require("querystring");
 
-function templateHTML(product, list, body) {
+function templateHTML(product, list, body, control) {
   return `
   <!DOCTYPE html>
   <html>
@@ -16,7 +16,7 @@ function templateHTML(product, list, body) {
       <h1><a href="/">SOM Accessories</a></h1>
       <div id="grid">
         ${list}
-        <a href='/add'>Add</a>
+        ${control}
         ${body}
       </div>
     </body>
@@ -33,7 +33,7 @@ function templateList(filelists) {
   return list;
 }
 
-let app = http.createServer(function (request, response) {
+let app = http.createServer((request, response) => {
   let _url = request.url;
   let queryData = url.parse(_url, true).query;
   let pathname = url.parse(_url, true).pathname;
@@ -48,9 +48,10 @@ let app = http.createServer(function (request, response) {
           product,
           list,
           `<div id="article">
-        <h2>${product}</h2>
-        <p>${description}</p>
-      </div>`
+            <h2>${product}</h2>
+            <p>${description}</p>
+          </div>`,
+          `<a href='/add'>Add product</a>`
         );
         response.writeHead(200);
         response.end(template);
@@ -67,9 +68,15 @@ let app = http.createServer(function (request, response) {
             product,
             list,
             `<div id="article">
-          <h2>${product}</h2>
-          <p>${description}</p>
-        </div>`
+              <h2>${product}</h2>
+              <p>${description}</p>
+            </div>`,
+            `<a href='/add'>Add product</a> 
+            <a href='/update?id=${product}'>Update</a> 
+            <form action="delete_process" method="post" onsubmit="">
+              <input type='hidden' name="id" value='${product}'>
+              <input type='submit' value='Delete'>
+            </form>`
           );
           response.writeHead(200);
           response.end(template);
@@ -83,16 +90,12 @@ let app = http.createServer(function (request, response) {
       let template = templateHTML(
         product,
         list,
-        `<form action="http://localhost:3000/add_process" method="post">
-        <p><input type="text" name="product" placeholder='product' /></p>
-        <p>
-          <textarea name="description" placeholder='description'></textarea>
-        </p>
-        <p>
-          <input type="submit" />
-        </p>
-      </form>
-      `
+        `<form action="/add_process" method="post">
+          <p><input type="text" name="product" placeholder='product' /></p>
+          <p><textarea name="description" placeholder='description'></textarea></p>
+          <p><input type="submit" /></p>
+        </form>`,
+        ``
       );
       response.writeHead(200);
       response.end(template);
@@ -101,13 +104,76 @@ let app = http.createServer(function (request, response) {
     let body = "";
     request.on("data", (data) => {
       body = body + data;
+      // too much POST data, kill the connection!
+      //1e6 === 1 * Math.pow(10,6) === 1 * 1000000 ~~~ 1MB
+      if (body.length > 1e6) request.connection.destroy();
     });
     request.on("end", () => {
       let post = qs.parse(body);
       let product = post.product;
       let description = post.description;
       fs.writeFile(`data/${product}`, description, "utf8", (err) => {
+        if (err) throw err;
         response.writeHead(302, { Location: `/?id=${product}` });
+        response.end();
+      });
+    });
+  } else if (pathname === "/update") {
+    fs.readdir("./data", (err, filelists) => {
+      fs.readFile(`data/${queryData.id}`, "utf8", function (err, description) {
+        let product = queryData.id;
+        let list = templateList(filelists);
+        let template = templateHTML(
+          product,
+          list,
+          `<form action="/update_process" method="post">
+            <input type='hidden' name='id' value='${product}'>
+            <p><input type="text" name="product" placeholder='product' value='${product}'/></p>
+            <p><textarea name="description" placeholder='description'>${description}</textarea></p>
+            <p><input type="submit" /></p>
+          </form>`,
+          `<a href='/add'>Add product</a> <a href='/update?id=${product}'>Update</a>`
+        );
+        response.writeHead(200);
+        response.end(template);
+      });
+    });
+  } else if (pathname === "/update_process") {
+    let body = "";
+    request.on("data", (data) => {
+      body = body + data;
+      // too much POST data, kill the connection!
+      //1e6 === 1 * Math.pow(10,6) === 1 * 1000000 ~~~ 1MB
+      if (body.length > 1e6) request.connection.destroy();
+    });
+    request.on("end", () => {
+      let post = qs.parse(body);
+      let id = post.id;
+      let product = post.product;
+      let description = post.description;
+      fs.rename(`data/${id}`, `data/${product}`, (err) => {
+        if (err) throw err;
+        fs.writeFile(`data/${product}`, description, "utf8", (err) => {
+          if (err) throw err;
+          response.writeHead(302, { Location: `/?id=${product}` });
+          response.end();
+        });
+      });
+    });
+  } else if (pathname === "/delete_process") {
+    let body = "";
+    request.on("data", (data) => {
+      body = body + data;
+      // too much POST data, kill the connection!
+      //1e6 === 1 * Math.pow(10,6) === 1 * 1000000 ~~~ 1MB
+      if (body.length > 1e6) request.connection.destroy();
+    });
+    request.on("end", () => {
+      let post = qs.parse(body);
+      let id = post.id;
+      fs.unlink(`data/${id}`, (err) => {
+        if (err) throw err;
+        response.writeHead(302, { Location: `/` });
         response.end();
       });
     });
