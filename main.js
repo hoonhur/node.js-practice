@@ -3,35 +3,36 @@ let fs = require("fs");
 let url = require("url");
 let qs = require("querystring");
 
-function templateHTML(product, list, body, control) {
-  return `
-  <!DOCTYPE html>
-  <html>
-    <head>
-      <meta charset="utf-8">
-      <title>SOM Accessories ${product}</title>
-      <link rel="stylesheet" type="text/css" href="main.css">
-    </head>
-    <body>
-      <h1><a href="/">SOM Accessories</a></h1>
-      <div id="grid">
-        ${list}
-        ${control}
-        ${body}
-      </div>
-    </body>
-  </html>
-    `;
-}
-
-function templateList(filelists) {
-  let list = "<ul>";
-  for (file of filelists) {
-    list = list + `<li><a href='/?id=${file}'>${file}</a></li>`;
-  }
-  list = list + "</ul>";
-  return list;
-}
+let template = {
+  HTML: function (product, list, body, control) {
+    return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <title>SOM Accessories ${product}</title>
+        <link rel="stylesheet" type="text/css" href="main.css">
+      </head>
+      <body>
+        <h1><a href="/">SOM Accessories</a></h1>
+        <div id="grid">
+          ${list}
+          ${control}
+          ${body}
+        </div>
+      </body>
+    </html>
+      `;
+  },
+  list: function (filelists) {
+    let list = "<ul>";
+    for (file of filelists) {
+      list = list + `<li><a href='/?id=${file}'>${file}</a></li>`;
+    }
+    list = list + "</ul>";
+    return list;
+  },
+};
 
 let app = http.createServer((request, response) => {
   let _url = request.url;
@@ -43,8 +44,8 @@ let app = http.createServer((request, response) => {
       fs.readdir("./data", (err, filelists) => {
         let product = "welcome";
         let description = "SOM Accessory is...";
-        let list = templateList(filelists);
-        let template = templateHTML(
+        let list = template.list(filelists);
+        let HTML = template.HTML(
           product,
           list,
           `<div id="article">
@@ -54,7 +55,7 @@ let app = http.createServer((request, response) => {
           `<a href='/add'>Add product</a>`
         );
         response.writeHead(200);
-        response.end(template);
+        response.end(HTML);
       });
     } else {
       fs.readdir("./data", (err, filelists) => {
@@ -63,8 +64,8 @@ let app = http.createServer((request, response) => {
           description
         ) {
           let product = queryData.id;
-          let list = templateList(filelists);
-          let template = templateHTML(
+          let list = template.list(filelists);
+          let HTML = template.HTML(
             product,
             list,
             `<div id="article">
@@ -79,15 +80,15 @@ let app = http.createServer((request, response) => {
             </form>`
           );
           response.writeHead(200);
-          response.end(template);
+          response.end(HTML);
         });
       });
     }
   } else if (pathname === "/add") {
     fs.readdir("./data", (err, filelists) => {
       let product = "Product-add";
-      let list = templateList(filelists);
-      let template = templateHTML(
+      let list = template.list(filelists);
+      let HTML = template.HTML(
         product,
         list,
         `<form action="/add_process" method="post">
@@ -98,7 +99,7 @@ let app = http.createServer((request, response) => {
         ``
       );
       response.writeHead(200);
-      response.end(template);
+      response.end(HTML);
     });
   } else if (pathname === "/add_process") {
     let body = "";
@@ -122,8 +123,8 @@ let app = http.createServer((request, response) => {
     fs.readdir("./data", (err, filelists) => {
       fs.readFile(`data/${queryData.id}`, "utf8", function (err, description) {
         let product = queryData.id;
-        let list = templateList(filelists);
-        let template = templateHTML(
+        let list = template.list(filelists);
+        let HTML = template.HTML(
           product,
           list,
           `<form action="/update_process" method="post">
@@ -135,7 +136,7 @@ let app = http.createServer((request, response) => {
           `<a href='/add'>Add product</a> <a href='/update?id=${product}'>Update</a>`
         );
         response.writeHead(200);
-        response.end(template);
+        response.end(HTML);
       });
     });
   } else if (pathname === "/update_process") {
