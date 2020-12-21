@@ -23,8 +23,7 @@ let template = {
       </body>
     </html>
       `;
-  },
-  list: function (filelists) {
+  }, list: function (filelists) {
     let list = "<ul>";
     for (file of filelists) {
       list = list + `<li><a href='/?id=${file}'>${file}</a></li>`;
