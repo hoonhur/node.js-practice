@@ -2,36 +2,9 @@ let http = require("http");
 let fs = require("fs");
 let url = require("url");
 let qs = require("querystring");
+let path = require("path");
 
-let template = {
-  HTML: function (product, list, body, control) {
-    return `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta charset="utf-8">
-        <title>SOM Accessories ${product}</title>
-        <link rel="stylesheet" type="text/css" href="main.css">
-      </head>
-      <body>
-        <h1><a href="/">SOM Accessories</a></h1>
-        <div id="grid">
-          ${list}
-          ${control}
-          ${body}
-        </div>
-      </body>
-    </html>
-      `;
-  }, list: function (filelists) {
-    let list = "<ul>";
-    for (file of filelists) {
-      list = list + `<li><a href='/?id=${file}'>${file}</a></li>`;
-    }
-    list = list + "</ul>";
-    return list;
-  },
-};
+let template = require("./lib/template.js");
 
 let app = http.createServer((request, response) => {
   let _url = request.url;
@@ -41,40 +14,38 @@ let app = http.createServer((request, response) => {
   if (pathname === "/") {
     if (queryData.id === undefined) {
       fs.readdir("./data", (err, filelists) => {
-        let product = "welcome";
+        let title = "Welcome";
         let description = "SOM Accessory is...";
         let list = template.list(filelists);
         let HTML = template.HTML(
-          product,
+          title,
           list,
           `<div id="article">
-            <h2>${product}</h2>
+            <h2>${title}</h2>
             <p>${description}</p>
           </div>`,
-          `<a href='/add'>Add product</a>`
+          `<a href='/add'>Add Product</a>`
         );
         response.writeHead(200);
         response.end(HTML);
       });
     } else {
       fs.readdir("./data", (err, filelists) => {
-        fs.readFile(`data/${queryData.id}`, "utf8", function (
-          err,
-          description
-        ) {
-          let product = queryData.id;
+        let filteredId = path.parse(queryData.id).base;
+        fs.readFile(`data/${filteredId}`, "utf8", function (err, description) {
+          let title = filteredId;
           let list = template.list(filelists);
           let HTML = template.HTML(
-            product,
+            title,
             list,
             `<div id="article">
-              <h2>${product}</h2>
+              <h2>${title}</h2>
               <p>${description}</p>
             </div>`,
-            `<a href='/add'>Add product</a> 
-            <a href='/update?id=${product}'>Update</a> 
+            `<a href='/add'>Add Product</a> 
+            <a href='/update?id=${title}'>Update</a> 
             <form action="delete_process" method="post" onsubmit="">
-              <input type='hidden' name="id" value='${product}'>
+              <input type='hidden' name="id" value='${title}'>
               <input type='submit' value='Delete'>
             </form>`
           );
@@ -85,10 +56,10 @@ let app = http.createServer((request, response) => {
     }
   } else if (pathname === "/add") {
     fs.readdir("./data", (err, filelists) => {
-      let product = "Product-add";
+      let title = "Add Product";
       let list = template.list(filelists);
       let HTML = template.HTML(
-        product,
+        title,
         list,
         `<form action="/add_process" method="post">
           <p><input type="text" name="product" placeholder='product' /></p>
@@ -120,19 +91,20 @@ let app = http.createServer((request, response) => {
     });
   } else if (pathname === "/update") {
     fs.readdir("./data", (err, filelists) => {
-      fs.readFile(`data/${queryData.id}`, "utf8", function (err, description) {
-        let product = queryData.id;
+      let filteredId = path.parse(queryData.id).base;
+      fs.readFile(`data/${filteredId}`, "utf8", function (err, description) {
+        let title = filteredId;
         let list = template.list(filelists);
         let HTML = template.HTML(
-          product,
+          title,
           list,
           `<form action="/update_process" method="post">
-            <input type='hidden' name='id' value='${product}'>
-            <p><input type="text" name="product" placeholder='product' value='${product}'/></p>
+            <input type='hidden' name='id' value='${title}'>
+            <p><input type="text" name="product" placeholder='product' value='${title}'/></p>
             <p><textarea name="description" placeholder='description'>${description}</textarea></p>
             <p><input type="submit" /></p>
           </form>`,
-          `<a href='/add'>Add product</a> <a href='/update?id=${product}'>Update</a>`
+          `<a href='/add'>Add Product</a> <a href='/update?id=${title}'>Update</a>`
         );
         response.writeHead(200);
         response.end(HTML);
@@ -171,7 +143,8 @@ let app = http.createServer((request, response) => {
     request.on("end", () => {
       let post = qs.parse(body);
       let id = post.id;
-      fs.unlink(`data/${id}`, (err) => {
+      let filteredId = path.parse(id).base;
+      fs.unlink(`data/${filteredId}`, (err) => {
         if (err) throw err;
         response.writeHead(302, { Location: `/` });
         response.end();
