@@ -3,6 +3,7 @@ let fs = require("fs");
 let url = require("url");
 let qs = require("querystring");
 let path = require("path");
+let sanitizeHtml = require("sanitize-html");
 
 let template = require("./lib/template.js");
 
@@ -33,19 +34,23 @@ let app = http.createServer((request, response) => {
       fs.readdir("./data", (err, filelists) => {
         let filteredId = path.parse(queryData.id).base;
         fs.readFile(`data/${filteredId}`, "utf8", function (err, description) {
-          let title = filteredId;
+          let title = queryData.id;
+          let sanitizedTitle = sanitizeHtml(title);
+          let sanitizedDescription = sanitizeHtml(description, {
+            allowedTags: ["h1"],
+          });
           let list = template.list(filelists);
           let HTML = template.HTML(
-            title,
+            sanitizedTitle,
             list,
             `<div id="article">
-              <h2>${title}</h2>
-              <p>${description}</p>
+              <h2>${sanitizedTitle}</h2>
+              <p>${sanitizedDescription}</p>
             </div>`,
             `<a href='/add'>Add Product</a> 
-            <a href='/update?id=${title}'>Update</a> 
-            <form action="delete_process" method="post" onsubmit="">
-              <input type='hidden' name="id" value='${title}'>
+            <a href='/update?id=${sanitizedTitle}'>Update</a> 
+            <form action="delete_process" method="post" onsubmit="alert('Product will be deleted')">
+              <input type='hidden' name="id" value='${sanitizedTitle}'>
               <input type='submit' value='Delete'>
             </form>`
           );
