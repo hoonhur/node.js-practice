@@ -1,13 +1,13 @@
-let http = require("http");
-let fs = require("fs");
-let url = require("url");
-let qs = require("querystring");
-let path = require("path");
-let sanitizeHtml = require("sanitize-html");
+const http = require("http");
+const fs = require("fs");
+const url = require("url");
+const qs = require("querystring");
+const path = require("path");
+const sanitizeHtml = require("sanitize-html");
 
-let template = require("./lib/template.js");
+const template = require("./lib/template.js");
 
-let app = http.createServer((request, response) => {
+const app = http.createServer((request, response) => {
   let _url = request.url;
   let queryData = url.parse(_url, true).query;
   let pathname = url.parse(_url, true).pathname;
